@@ -4,7 +4,7 @@ const https = require('https');
 const app = express();
 app.use(cors({ origin: '*' }));
 app.use(express.json());
-const KEY = '5d323cce12mshdbad40dd3b9fde9p1bb040jsn9f6c4da1a73f';
+const KEY = 'f8d4313a71msh3f97b8d0f3ca813p108e2cjsn149b99cb6298';
 const HOST = 'vehicle-rc-information-v2.p.rapidapi.com';
 const cache = {};
 function fmt(s){if(!s)return'';s=String(s).trim();if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);const M={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};const m=s.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})/);if(m)return`${m[3]}-${M[m[2]]||'01'}-${m[1]}`;const m2=s.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);if(m2)return`${m2[3]}-${m2[2]}-${m2[1]}`;return'';}
