@@ -6,9 +6,22 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 const KEY = 'f8d4313a71msh3f97b8d0f3ca813p108e2cjsn149b99cb6298';
 const HOST = 'vehicle-rc-information-v2.p.rapidapi.com';
-const cache = path: '/api/v1/rc/vehicleInfo',
-function fmt(s){if(!s)return'';s=String(s).trim();if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);const M={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};const m=s.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})/);if(m)return`${m[3]}-${M[m[2]]||'01'}-${m[1]}`;const m2=s.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);if(m2)return`${m2[3]}-${m2[2]}-${m2[1]}`;return'';}
-function callAPI(vnum){return new Promise((resolve,reject)=>{const data=JSON.stringify({vehicle_number:vnum});const options={hostname:HOST,path:'/api/v1/rc/vehicleadvancedinfo',method:'POST',headers:{'Content-Type':'application/json','Content-Length':Buffer.byteLength(data),'x-rapidapi-key':KEY,'x-rapidapi-host':HOST}};const req=https.request(options,(res)=>{let body='';res.on('data',chunk=>body+=chunk);res.on('end',()=>{try{const json=JSON.parse(body);console.log(`[${vnum}]`,res.statusCode,body.slice(0,300));resolve({status:res.statusCode,json});}catch(e){reject(e);}});});req.on('error',reject);req.write(data);req.end();});}
+const PATH = '/api/v1/rc/vehicleInfo';
+const cache = {};
+function fmt(s){if(!s)return '';s=String(s).trim();if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);const M={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};const m=s.match(/^(\d{2})-([A-Za-z]{3})-(\d{4})/);if(m)return m[3]+'-'+(M[m[2]]||'01')+'-'+m[1];const m2=s.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);if(m2)return m2[3]+'-'+m2[2]+'-'+m2[1];return '';}
+function callAPI(vnum){return new Promise((resolve,reject)=>{const data=JSON.stringify({vehicle_number:vnum});const opts={hostname:HOST,path:PATH,method:'POST',headers:{'Content-Type':'application/json','Content-Length':Buffer.byteLength(data),'x-rapidapi-key':KEY,'x-rapidapi-host':HOST}};const req=https.request(opts,(res)=>{let b='';res.on('data',c=>b+=c);res.on('end',()=>{try{resolve({status:res.statusCode,json:JSON.parse(b)});}catch(e){reject(e);}});});req.on('error',reject);req.write(data);req.end();});}
 app.get('/',(req,res)=>res.json({status:'DMC RTO Server Online',cache:Object.keys(cache).length}));
-app.get('/rc/:vnum',async(req,res)=>{const vnum=req.params.vnum.toUpperCase().replace(/[\s\-]/g,'');if(cache[vnum])return res.json({...cache[vnum],cached:true});try{const{status,json}=await callAPI(vnum);if(status!==200||json.error)return res.status(400).json({error:json.error||json.message||'API Error',raw:json});const d=json.result||json.data||json;const out={vnum,source:'live',cached:false,owner:d.owner_name||'Unknown',father:d.father_name||'',address:d.present_address||d.permanent_address||'',vehicle_class:d.class||'',fuel:d.fuel_type||'',make:d.brand_name||'',model:d.brand_model||'',color:d.color||'',chassis:d.chassis_number||'',engine:d.engine_number||'',rc_status:d.rc_status||'ACTIVE',rc_expiry:fmt(d.rc_expiry_date||d.reg_upto||''),insurance_company:d.insurance_company||'',insurance_policy:d.insurance_policy||'',insurance_expiry:fmt(d.insurance_expiry||''),puc_no:d.pucc_number||'',puc_expiry:fmt(d.pucc_upto||''),fitness_no:d.fitness_no||'',fitness_expiry:fmt(d.fitness_upto||''),permit:d.permit_type||'',permit_expiry:fmt(d.permit_valid_upto||''),tax_upto:fmt(d.tax_paid_upto||''),blacklist:d.noc_details==='NA'?'No':(d.blacklist_status||'No'),challan_pending:parseInt(d.challan||0),owner_count:d.owner_count||'1',is_financed:d.is_financed==='1'?'Yes':'No',financer:d.financer||''};cache[vnum]=out;return res.json(out);}catch(err){return res.status(500).json({error:err.message});}});
+app.get('/rc/:vnum',async(req,res)=>{
+const vnum=req.params.vnum.toUpperCase().replace(/[\s-]/g,'');
+if(cache[vnum])return res.json({...cache[vnum],cached:true});
+try{
+const {status,json}=await callAPI(vnum);
+console.log('['+vnum+']',status,JSON.stringify(json).slice(0,200));
+if(status!==200||json.error)return res.status(400).json({error:json.error||json.message||'API Error',raw:json});
+const d=json.result||json.data||json;
+const out={vnum,source:'live',cached:false,owner:d.owner_name||'Unknown',father:d.father_name||'',address:d.present_address||d.permanent_address||'',vehicle_class:d.class||'',fuel:d.fuel_type||'',make:d.brand_name||'',model:d.brand_model||'',color:d.color||'',chassis:d.chassis_number||'',engine:d.engine_number||'',rc_status:d.rc_status||'ACTIVE',rc_expiry:fmt(d.rc_expiry_date||d.reg_upto||''),insurance_company:d.insurance_company||'',insurance_policy:d.insurance_policy||'',insurance_expiry:fmt(d.insurance_expiry||''),puc_no:d.pucc_number||'',puc_expiry:fmt(d.pucc_upto||''),fitness_no:d.fitness_no||'',fitness_expiry:fmt(d.fitness_upto||''),permit:d.permit_type||'',permit_expiry:fmt(d.permit_valid_upto||''),tax_upto:fmt(d.tax_paid_upto||''),blacklist:d.noc_details==='NA'?'No':(d.blacklist_status||'No'),challan_pending:parseInt(d.challan||0),owner_count:d.owner_count||'1',is_financed:d.is_financed==='1'?'Yes':'No',financer:d.financer||''};
+cache[vnum]=out;
+return res.json(out);
+}catch(err){return res.status(500).json({error:err.message});}
+});
 app.listen(process.env.PORT||3000,()=>console.log('DMC RTO Server started'));
